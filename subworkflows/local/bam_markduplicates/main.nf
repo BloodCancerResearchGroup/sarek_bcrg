@@ -6,6 +6,7 @@
 
 include { CRAM_QC_MOSDEPTH_SAMTOOLS } from '../cram_qc_mosdepth_samtools/main'
 include { GATK4_MARKDUPLICATES      } from '../../../modules/nf-core/gatk4/markduplicates/main'
+include { SAMTOOLS_SORT as SAMTOOLS_SORT_BY_QUERY } from '../../../modules/nf-core/samtools/sort/main'
 
 workflow BAM_MARKDUPLICATES {
     take:
@@ -18,8 +19,11 @@ workflow BAM_MARKDUPLICATES {
     versions = Channel.empty()
     reports  = Channel.empty()
 
+    // Sort bam by read names
+    SAMTOOLS_SORT_BY_QUERY(bam, fasta)
+
     // RUN MARKUPDUPLICATES
-    GATK4_MARKDUPLICATES(bam, fasta.map{ meta, fasta -> [ fasta ] }, fasta_fai.map{ meta, fasta_fai -> [ fasta_fai ] })
+    GATK4_MARKDUPLICATES(SAMTOOLS_SORT_BY_QUERY.out.bam, fasta.map{ meta, fasta -> [ fasta ] }, fasta_fai.map{ meta, fasta_fai -> [ fasta_fai ] })
 
     // Join with the crai file
     cram = GATK4_MARKDUPLICATES.out.cram.join(GATK4_MARKDUPLICATES.out.crai, failOnDuplicate: true, failOnMismatch: true)
