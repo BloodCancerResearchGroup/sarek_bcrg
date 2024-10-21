@@ -44,6 +44,15 @@ include { BAM_MERGE_INDEX_SAMTOOLS                          } from '../../subwor
 include { SAMTOOLS_CONVERT as BAM_TO_CRAM                   } from '../../modules/nf-core/samtools/convert/main'
 include { SAMTOOLS_CONVERT as BAM_TO_CRAM_MAPPING           } from '../../modules/nf-core/samtools/convert/main'
 
+// Samblaster
+include { SAMBLASTER } from '../../modules/nf-core/samblaster/main'
+
+// Samblaster stuff
+include { SAMTOOLS_SORT } from '../../modules/nf-core/samtools/sort/main'
+include { SAMTOOLS_CONVERT as SAMBLASTER_BAM_TO_CRAM                   } from '../../modules/nf-core/samtools/convert/main'
+include { SAMTOOLS_CONVERT as SAMBLASTER_CRAM_TO_BAM                   } from '../../modules/nf-core/samtools/convert/main'
+include { SAMTOOLS_INDEX } from '../../modules/nf-core/samtools/index/main'
+
 // Convert CRAM files (optional)
 include { SAMTOOLS_CONVERT as CRAM_TO_BAM                   } from '../../modules/nf-core/samtools/convert/main'
 include { SAMTOOLS_CONVERT as CRAM_TO_BAM_RECAL             } from '../../modules/nf-core/samtools/convert/main'
@@ -419,6 +428,27 @@ workflow SAREK {
 
             // Gather used softwares versions
             versions = versions.mix(BAM_MARKDUPLICATES_SPARK.out.versions)
+        } else if (params.use_samblaster) {
+            ch_bams_converted = cram_for_markduplicates.map { meta, bams ->
+                bams.collect { bam ->
+                    [meta, bam, []]
+                }
+            }.flatMap{ it -> it }
+
+            ch_bams_converted.view {
+                error "Stopped."
+            }
+
+            SAMTOOLS_SORT(ch_bams_converted, fasta)
+
+            // call samblaster
+            SAMBLASTER(ch_bams_converted)
+
+            // index
+            SAMTOOLS_INDEX(SAMBLASTER.out.bam)
+
+            cram_markduplicates_no_spark = SAMBLASTER.out.bam.join(SAMTOOLS_INDEX.out.bai, failOnDuplicate: true, failOnMismatch: true)
+
         } else if (params.tools && params.tools.split(',').contains('sentieon_dedup')) {
             crai_for_markduplicates = params.step == 'mapping' ? bai_mapped : input_sample.map{ meta, input, index -> [ meta, index ] }
             BAM_SENTIEON_DEDUP(
