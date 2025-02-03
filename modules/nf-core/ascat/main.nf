@@ -48,6 +48,8 @@ process ASCAT {
     def fasta_arg                        = fasta                              ?  ",ref.fasta = '$fasta'" : ""
     def skip_allele_counting_tumour_arg  = args.skip_allele_counting_tumour   ?  ",skip_allele_counting_tumour = $args.skip_allele_counting_tumour" : ""
     def skip_allele_counting_normal_arg  = args.skip_allele_counting_normal   ?  ",skip_allele_counting_normal = $args.skip_allele_counting_normal" : ""
+    def min_ploidy = 1.8
+    def max_ploidy = 2.8
 
     """
     #!/usr/bin/env Rscript
@@ -125,13 +127,13 @@ process ASCAT {
     #Run ASCAT to fit every tumor to a model, inferring ploidy, normal cell contamination, and discrete copy numbers
     #If psi and rho are manually set:
     if (!is.null($purity) && !is.null($ploidy)){
-        ascat.output <- ascat.runAscat(ascat.bc, gamma=1, rho_manual=$purity, psi_manual=$ploidy)
+        ascat.output <- ascat.runAscat(ascat.bc, min_ploidy = $min_ploidy, max_ploidy = $max_ploidy, gamma = 1, rho_manual = $purity, psi_manual = $ploidy)
     } else if(!is.null($purity) && is.null($ploidy)){
-        ascat.output <- ascat.runAscat(ascat.bc, gamma=1, rho_manual=$purity)
+        ascat.output <- ascat.runAscat(ascat.bc, min_ploidy = $min_ploidy, max_ploidy = $max_ploidy, gamma=1, rho_manual=$purity)
     } else if(!is.null($ploidy) && is.null($purity)){
-        ascat.output <- ascat.runAscat(ascat.bc, gamma=1, psi_manual=$ploidy)
+        ascat.output <- ascat.runAscat(ascat.bc, min_ploidy = $min_ploidy, max_ploidy = $max_ploidy, gamma=1, psi_manual=$ploidy)
     } else {
-        ascat.output <- ascat.runAscat(ascat.bc, gamma=1)
+        ascat.output <- ascat.runAscat(ascat.bc, min_ploidy = $min_ploidy, max_ploidy = $max_ploidy, gamma=1)
     }
 
     #Extract metrics from ASCAT profiles
